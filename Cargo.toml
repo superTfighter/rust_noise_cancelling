@@ -1,0 +1,14 @@
+[package]
+name = "noise_cancelling"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+portaudio = "0.7"
+three = "0.4.0"
+cgmath = "0.17.0"
+mint = "0.5.1"
+rustfft = "6.0.1"
+poloto = "15.2.0"
