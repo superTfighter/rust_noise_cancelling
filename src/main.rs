@@ -1,10 +1,10 @@
 extern crate portaudio;
 
 use portaudio as pa;
-
 use portaudio::stream::Buffer;
 
-use rustfft::{num_traits::float, FftPlanner};
+// Perform a forward FFT of size 1234
+use rustfft::{num_complex::Complex, FftPlanner};
 
 use spectrum_analyzer::scaling::divide_by_N;
 use spectrum_analyzer::windows::hann_window;
@@ -15,6 +15,8 @@ use poloto::prelude::*;
 use std::fs::File;
 use std::io::prelude::*;
 
+use rand::prelude::*;
+
 const CHANNELS: i32 = 2;
 const NUM_SECONDS: i32 = 5;
 const SAMPLE_RATE: f64 = 44_100.0;
@@ -24,6 +26,37 @@ const INTERLEAVED: bool = true;
 const FRAMES: u32 = 256;
 
 fn main() {
+
+    /*let mut rng = rand::thread_rng();
+    let mut planner = FftPlanner::<f32>::new();
+    let fft = planner.plan_fft_forward(256);
+    let ifft = planner.plan_fft_inverse(256);
+
+    let mut buffer:Vec<Complex<f32>> = vec![Complex{ re: 0.0, im: 0.0 }; 256];
+
+    println!("Input---------------------------------------------------------------------------------------------- ");
+    for i in 0..256 {
+
+        let y: f32 = rng.gen_range(1.0..101.0);
+        buffer[i] = Complex{re: y, im: 0.0};
+
+        println!("{}" , buffer[i].re);
+    }
+
+    fft.process(&mut buffer);
+    println!("After---------------------------------------------------------------------------------------------- ");
+    for i in buffer.iter() {
+        println!("{} ", i.re);
+    }
+
+
+    ifft.process(&mut buffer);
+    println!("Ifft---------------------------------------------------------------------------------------------- ");
+    for i in buffer.iter() {
+        println!("{} ", (i.re / 256.0));
+    }
+
+    panic!("Test");*/
     match run() {
         Ok(_) => {}
         e => {
@@ -101,8 +134,11 @@ fn run() -> Result<(), pa::Error> {
 }
 
 fn calculate_audio(mut buffer: Vec<f32>) {
-    let hann_window = hann_window(&buffer);
 
+  
+    
+    
+    let hann_window = hann_window(&buffer);
     let spectrum_hann_window = samples_fft_to_spectrum(
         // (windowed) samples
         &hann_window,
@@ -115,16 +151,28 @@ fn calculate_audio(mut buffer: Vec<f32>) {
     )
     .unwrap();
 
-    //TODO: basically inverse fft is needed here, with the correct transformed wave
-   /* let mut planner = FftPlanner::<f32>::new();
-    let fft = planner.plan_fft_inverse(265);
+    //TODO: basically inverse fft is needed here, with the correct transformed wave (dehannwindows)
+     let mut planner = FftPlanner::<f32>::new();
+    let fft = planner.plan_fft_inverse(256);
 
-    let mut b2 = Vec<f32>();
+    let mut b2: Vec<Complex<f32>> = vec![Complex{ re: 0.0, im: 0.0 }; 256];
 
-    fft.process(&mut buffer);*/
+    for i in 0..129
+    {
+        b2[i] = Complex{re: spectrum_hann_window.data()[i].1.val() , im: 0.0};
+    }
+
+    fft.process(&mut b2);
+
+    println!("{}" , buffer[0]);
+
+    println!("{}" , b2[0].re);
+
+    println!("{}" , (b2[0].re / 256.0) );
+
+    panic!("ASD");
 
     write_to_file(plot_fft(spectrum_hann_window));
-    
 }
 
 fn write_to_file(data: String) {
