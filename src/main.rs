@@ -2,9 +2,16 @@ extern crate portaudio;
 
 use portaudio as pa;
 
-use rustfft::{num_complex::Complex, FftPlanner};
+use portaudio::stream::Buffer;
+
+use rustfft::{num_traits::float, FftPlanner};
+
+use spectrum_analyzer::scaling::divide_by_N;
+use spectrum_analyzer::windows::hann_window;
+use spectrum_analyzer::{samples_fft_to_spectrum, FrequencyLimit, FrequencySpectrum};
 
 use poloto::prelude::*;
+
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -51,31 +58,23 @@ fn run() -> Result<(), pa::Error> {
     let callback = move |pa::DuplexStreamCallbackArgs {
                              in_buffer,
                              out_buffer,
-                             frames,
-                             time,
                              ..
                          }| {
-        let mut buffer = vec![Complex { re: 0.0, im: 0.0 }; 256];
+        let mut buffer = vec![0.0; 256];
 
         let mut counter = 0;
 
         while counter < 512 {
             if counter == 0 {
-                buffer[counter] = Complex {
-                    re: in_buffer[counter],
-                    im: 0.0,
-                };
+                buffer[counter] = in_buffer[counter];
             } else if counter % 2 == 0 {
-                buffer[counter / 2] = Complex {
-                    re: in_buffer[counter],
-                    im: 0.0,
-                };
+                buffer[counter / 2] = in_buffer[counter];
             }
 
             counter += 1;
         }
 
-        calculate_audio(buffer.as_mut_slice());
+        calculate_audio(buffer);
 
         // Pass the input straight to the output - BEWARE OF FEEDBACK!
         for (output_sample, input_sample) in out_buffer.iter_mut().zip(in_buffer.iter()) {
@@ -101,16 +100,31 @@ fn run() -> Result<(), pa::Error> {
     Ok(())
 }
 
-fn calculate_audio(mut buffer: &mut [Complex<f32>]) {
-    let mut planner = FftPlanner::<f32>::new();
+fn calculate_audio(mut buffer: Vec<f32>) {
+    let hann_window = hann_window(&buffer);
 
-    let fft = planner.plan_fft_forward(256);
+    let spectrum_hann_window = samples_fft_to_spectrum(
+        // (windowed) samples
+        &hann_window,
+        // sampling rate
+        44100,
+        // optional frequency limit: e.g. only interested in frequencies 50 <= f <= 150?
+        FrequencyLimit::All,
+        // optional scale
+        None,
+    )
+    .unwrap();
 
-    fft.process(&mut buffer);
+    //TODO: basically inverse fft is needed here, with the correct transformed wave
+   /* let mut planner = FftPlanner::<f32>::new();
+    let fft = planner.plan_fft_inverse(265);
 
-    write_to_file(plot_fft(buffer));
+    let mut b2 = Vec<f32>();
 
+    fft.process(&mut buffer);*/
 
+    write_to_file(plot_fft(spectrum_hann_window));
+    
 }
 
 fn write_to_file(data: String) {
@@ -119,10 +133,27 @@ fn write_to_file(data: String) {
     file.write_all(data.as_bytes()).expect("ASD");
 }
 
-fn plot_fft(buffer: &mut [Complex<f32>]) -> String {
+fn plot_fft(buffer: FrequencySpectrum) -> String {
+    let mut data: [(f64, f64); 256] = [(0.0, 0.0); 256];
+    let mut index: i32 = 0;
 
-    
+    for (fr, fr_val) in buffer.data().iter() {
+        data[index as usize] = (fr.val() as f64, fr_val.val() as f64);
 
+        index += 1;
+    }
 
-    "ASD".to_string()
+    let plots = poloto::plots!(
+        poloto::build::plot("").line().cloned(data.iter()),
+        poloto::build::markers([], [])
+    );
+
+    let a = poloto::data(plots)
+        .build_and_label(("FFT", "X", "Y"))
+        .append_to(poloto::header().light_theme())
+        .render_string()
+        .expect("Cannot convert to string!");
+
+    // let a = "ASD".to_string();
+    a
 }

@@ -7,8 +7,7 @@ edition = "2021"
 
 [dependencies]
 portaudio = "0.7"
-three = "0.4.0"
 cgmath = "0.17.0"
-mint = "0.5.1"
 rustfft = "6.0.1"
-poloto = "15.2.0"
+poloto = "16.0.0"
+spectrum-analyzer = "1.2.6"
