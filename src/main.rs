@@ -133,15 +133,15 @@ fn run() -> Result<(), pa::Error> {
     Ok(())
 }
 
-fn calculate_audio(mut buffer: Vec<f32>) {
-
-  
+fn calculate_audio(mut buffer: Vec<f32>) {  
     
     
-    let hann_window = hann_window(&buffer);
+    //let hann_window = hann_window(&buffer);
+    
+    
     let spectrum_hann_window = samples_fft_to_spectrum(
         // (windowed) samples
-        &hann_window,
+        &buffer,
         // sampling rate
         44100,
         // optional frequency limit: e.g. only interested in frequencies 50 <= f <= 150?
@@ -151,26 +151,22 @@ fn calculate_audio(mut buffer: Vec<f32>) {
     )
     .unwrap();
 
-    //TODO: basically inverse fft is needed here, with the correct transformed wave (dehannwindows)
-     let mut planner = FftPlanner::<f32>::new();
-    let fft = planner.plan_fft_inverse(256);
+    println!("{}", buffer[0]);
 
-    let mut b2: Vec<Complex<f32>> = vec![Complex{ re: 0.0, im: 0.0 }; 256];
+    let mut counter = 0;
 
-    for i in 0..129
-    {
-        b2[i] = Complex{re: spectrum_hann_window.data()[i].1.val() , im: 0.0};
+    for (fr, fr_val) in spectrum_hann_window.data().iter() {
+        
+
+       // counter 
+        println!("{} : {} ", fr.val(), fr_val.val());
     }
+   
 
-    fft.process(&mut b2);
+    panic!("Die");
 
-    println!("{}" , buffer[0]);
 
-    println!("{}" , b2[0].re);
-
-    println!("{}" , (b2[0].re / 256.0) );
-
-    panic!("ASD");
+    
 
     write_to_file(plot_fft(spectrum_hann_window));
 }
