@@ -6,8 +6,6 @@ use portaudio::stream::Buffer;
 // Perform a forward FFT of size 1234
 use rustfft::{num_complex::Complex, FftPlanner};
 
-use spectrum_analyzer::scaling::divide_by_N;
-use spectrum_analyzer::windows::hann_window;
 use spectrum_analyzer::{samples_fft_to_spectrum, FrequencyLimit, FrequencySpectrum};
 
 use poloto::prelude::*;
@@ -16,6 +14,8 @@ use std::fs::File;
 use std::io::prelude::*;
 
 use rand::prelude::*;
+
+mod analizer;
 
 const CHANNELS: i32 = 2;
 const NUM_SECONDS: i32 = 5;
@@ -84,10 +84,6 @@ fn run() -> Result<(), pa::Error> {
 
     let settings = pa::DuplexStreamSettings::new(input_params, output_params, SAMPLE_RATE, FRAMES);
 
-    // let (sender, receiver) = ::std::sync::mpsc::channel();
-    // This routine will be called by the PortAudio engine when audio is needed. It may called at
-    // interrupt level on some machines so don't do anything that could mess up the system like
-    // dynamic resource allocation or IO.
     let callback = move |pa::DuplexStreamCallbackArgs {
                              in_buffer,
                              out_buffer,
@@ -134,10 +130,17 @@ fn run() -> Result<(), pa::Error> {
 }
 
 fn calculate_audio(mut buffer: Vec<f32>) {  
+  
     
+    let mut count = 0;
     
-    //let hann_window = hann_window(&buffer);
-    
+    for val in &buffer
+    {
+        count += 1;
+    }
+
+    println!("{}" , count);
+
     
     let spectrum_hann_window = samples_fft_to_spectrum(
         // (windowed) samples
@@ -151,28 +154,37 @@ fn calculate_audio(mut buffer: Vec<f32>) {
     )
     .unwrap();
 
-    println!("{}", buffer[0]);
 
-    let mut counter = 0;
-
-    for (fr, fr_val) in spectrum_hann_window.data().iter() {
-        
-
-       // counter 
-        println!("{} : {} ", fr.val(), fr_val.val());
+    let mut count = 0;
+    
+    for (freq,freq_val) in spectrum_hann_window.data().iter()
+    {
+        count += 1;
     }
-   
+
+    println!("{}" , count);
+
+    let analizer = analizer::Analizer::new();
+
+    println!("{}", analizer.message());
 
     panic!("Die");
 
+   
 
-    
-
-    write_to_file(plot_fft(spectrum_hann_window));
+    //write_to_file(plot_fft(spectrum_hann_window));
 }
 
 fn write_to_file(data: String) {
-    let mut file = File::create("result.svg").expect("ASD");
+
+
+    let mut rng = rand::thread_rng();
+
+    let randomNumber =  rng.gen_range(1..999999);
+
+    let filename = format!("results/result{}.svg",randomNumber);
+
+    let mut file = File::create(filename).expect("ASD");
 
     file.write_all(data.as_bytes()).expect("ASD");
 }
